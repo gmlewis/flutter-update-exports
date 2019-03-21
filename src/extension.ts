@@ -3,7 +3,22 @@ import * as vscode from 'vscode';
 const fs = require('fs');
 const path = require('path');
 
-const exportRE = /^export\s+.*$/;
+const exportRE = /^export\s+['"](.*)['"];$/mg;
+
+// Export represents a single export statement in the current Dart file.
+class Export {
+    editor: vscode.TextEditor;
+    exportName: string;
+    exportOffset: number;
+    exportLine: string;
+
+    constructor(editor: vscode.TextEditor, exportName: string, exportOffset: number, exportLine: string) {
+        this.editor = editor;
+        this.exportName = exportName;
+        this.exportOffset = exportOffset;
+        this.exportLine = exportLine;
+    }
+}
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Congratulations, "Flutter Update Exports" is now active!');
@@ -15,11 +30,24 @@ export function activate(context: vscode.ExtensionContext) {
         }
         let saveSelection = editor.selection;
 
-        let fileName: string = editor.document.fileName;
+        let document = editor.document;
+        let exports = new Array<Export>();
+        const buf = document.getText();
+        while (true) {
+            let mm = exportRE.exec(buf);
+            if (!mm) { break; }
+            let exportName = mm[1];
+            let exportOffset = buf.indexOf(mm[0]);
+            let ex = new Export(editor, exportName, exportOffset, mm[0]);
+            exports.push(ex);
+        }
+
+        let fileName: string = document.fileName;
         let dirName: string = path.dirname(fileName);
         let extension: string = path.extname(fileName);
         let rootName: string = path.basename(fileName, extension);
-        console.log("Invoked extension on file: " + rootName);
+        console.log('Invoked extension on file: ' + rootName);
+        console.log('Found ' + exports.length.toString() + ' export statements.');
 
         let inTargetMode: boolean = true;
         let files: string[] = [];
@@ -29,8 +57,8 @@ export function activate(context: vscode.ExtensionContext) {
             inTargetMode = false;
             files = fs.readdirSync(dirName);
         }
-        console.log("In-target-mode: " + inTargetMode.toString());
-        console.log("Files: " + files.join(', '));
+        console.log('In-target-mode: ' + inTargetMode.toString());
+        console.log('Files: ' + files.join(', '));
 
         editor.selection = saveSelection;
     });
