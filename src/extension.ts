@@ -11,12 +11,14 @@ class Export {
     exportName: string;
     exportOffset: number;
     exportLine: string;
+    dirName: string
 
     constructor(editor: vscode.TextEditor, exportName: string, exportOffset: number, exportLine: string) {
         this.editor = editor;
         this.exportName = exportName;
         this.exportOffset = exportOffset;
         this.exportLine = exportLine;
+        this.dirName = path.dirname(exportName);
     }
 }
 
@@ -32,6 +34,9 @@ export function activate(context: vscode.ExtensionContext) {
 
         let document = editor.document;
         let exports = new Array<Export>();
+        let exportDirs = new Map<string, number>();
+        let primaryDir = '';
+        let primaryDirCount = 0;
         const buf = document.getText();
         while (true) {
             let mm = exportRE.exec(buf);
@@ -40,6 +45,13 @@ export function activate(context: vscode.ExtensionContext) {
             let exportOffset = buf.indexOf(mm[0]);
             let ex = new Export(editor, exportName, exportOffset, mm[0]);
             exports.push(ex);
+            let n = exportDirs.get(ex.dirName) || 0;
+            n++;
+            exportDirs.set(ex.dirName, n);
+            if (n > primaryDirCount) {
+                primaryDir = ex.dirName;
+                primaryDirCount = n;
+            }
         }
 
         let fileName: string = document.fileName;
@@ -48,6 +60,9 @@ export function activate(context: vscode.ExtensionContext) {
         let rootName: string = path.basename(fileName, extension);
         console.log('Invoked extension on file: ' + rootName);
         console.log('Found ' + exports.length.toString() + ' export statements.');
+        if (primaryDirCount > 0) {
+            console.log('Primary dir: ' + primaryDir);
+        }
 
         let inTargetMode: boolean = true;
         let files: string[] = [];

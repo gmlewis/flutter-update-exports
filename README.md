@@ -22,7 +22,7 @@ directory.
 
 If the current `*.dart` file already contains `export` statements, the
 extension attempts to find the primary directory being exported. It then
-removes all the `export` statements pointing to this directory and replaces
+removes all the `export` statements pointing to that directory and replaces
 them with a list of all the `*.dart` files in that directory, in sorted
 filename order.
 
