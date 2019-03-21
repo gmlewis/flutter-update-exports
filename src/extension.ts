@@ -70,7 +70,7 @@ const updateOrCreateFile = (dirName: string, files: Array<string>) => {
         let lines = new Array<string>();
         files.forEach((name) => lines.push("export '" + path.join(rootName, name) + "';"));
         lines.sort();
-        console.log('exports: ' + lines.join('\n'));
+        fs.writeFileSync(fileName, lines.join('\n'));
     }
 };
 
