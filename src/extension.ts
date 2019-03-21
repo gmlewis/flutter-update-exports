@@ -7,13 +7,13 @@ const exportRE = /^export\s+['"](.*)['"];$/mg;
 
 // Export represents a single export statement in the current Dart file.
 class Export {
-    editor: vscode.TextEditor;
+    editor: vscode.TextEditor | null;
     exportName: string;
     exportOffset: number;
     exportLine: string;
-    dirName: string
+    dirName: string;
 
-    constructor(editor: vscode.TextEditor, exportName: string, exportOffset: number, exportLine: string) {
+    constructor(editor: vscode.TextEditor | null, exportName: string, exportOffset: number, exportLine: string) {
         this.editor = editor;
         this.exportName = exportName;
         this.exportOffset = exportOffset;
@@ -21,6 +21,53 @@ class Export {
         this.dirName = path.dirname(exportName);
     }
 }
+
+// Exports represents the exports in a Dart file.
+class Exports {
+    editor: vscode.TextEditor | null;
+    exports: Array<Export>;
+    exportDirs: Map<string, number>;
+    primaryDir: string;
+    primaryDirCount: number;
+
+    constructor(editor: vscode.TextEditor | null, buf: string) {
+        this.editor = editor;
+        this.exports = new Array<Export>();
+        this.exportDirs = new Map<string, number>();
+        this.primaryDir = '';
+        this.primaryDirCount = 0;
+        while (true) {
+            let mm = exportRE.exec(buf);
+            if (!mm) { break; }
+            let exportName = mm[1];
+            let exportOffset = buf.indexOf(mm[0]);
+            let ex = new Export(editor, exportName, exportOffset, mm[0]);
+            exports.push(ex);
+            let n = this.exportDirs.get(ex.dirName) || 0;
+            n++;
+            this.exportDirs.set(ex.dirName, n);
+            if (n > this.primaryDirCount) {
+                this.primaryDir = ex.dirName;
+                this.primaryDirCount = n;
+            }
+        }
+        console.log('Found ' + this.exports.length.toString() + ' export statements.');
+        console.log('Primary dir: ' + this.primaryDir);
+    }
+}
+
+const updateOrCreateFile = (dirName: string, files: Array<string>) => {
+    console.log('Processing ' + files.length.toString() + ' exports.');
+    let fileName = dirName + '.dart';
+    try {
+        let buf: string = fs.readfileSync(fileName);
+        console.log('Found file: ' + fileName + ', length: ' + buf.length.toString());
+        let exports = new Exports(null, buf);
+        console.log('exports.primaryDir=' + exports.primaryDir);
+    } catch (Exception) {
+        console.log('Unable to find file: ' + fileName + '; creating it...');
+    }
+};
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Congratulations, "Flutter Update Exports" is now active!');
@@ -33,47 +80,40 @@ export function activate(context: vscode.ExtensionContext) {
         let saveSelection = editor.selection;
 
         let document = editor.document;
-        let exports = new Array<Export>();
-        let exportDirs = new Map<string, number>();
-        let primaryDir = '';
-        let primaryDirCount = 0;
         const buf = document.getText();
-        while (true) {
-            let mm = exportRE.exec(buf);
-            if (!mm) { break; }
-            let exportName = mm[1];
-            let exportOffset = buf.indexOf(mm[0]);
-            let ex = new Export(editor, exportName, exportOffset, mm[0]);
-            exports.push(ex);
-            let n = exportDirs.get(ex.dirName) || 0;
-            n++;
-            exportDirs.set(ex.dirName, n);
-            if (n > primaryDirCount) {
-                primaryDir = ex.dirName;
-                primaryDirCount = n;
-            }
-        }
+        let exports = new Exports(editor, buf);
 
         let fileName: string = document.fileName;
         let dirName: string = path.dirname(fileName);
         let extension: string = path.extname(fileName);
         let rootName: string = path.basename(fileName, extension);
         console.log('Invoked extension on file: ' + rootName);
-        console.log('Found ' + exports.length.toString() + ' export statements.');
-        if (primaryDirCount > 0) {
-            console.log('Primary dir: ' + primaryDir);
+
+        let primaryDir = exports.primaryDir;
+        if (exports.primaryDirCount < 1) {
+            primaryDir = rootName;
         }
 
         let inTargetMode: boolean = true;
         let files: string[] = [];
         try {
-            files = fs.readdirSync(path.join(dirName, rootName));
+            let subdirName = path.join(dirName, primaryDir);
+            files = fs.readdirSync(subdirName);
         } catch (Exception) {
             inTargetMode = false;
             files = fs.readdirSync(dirName);
         }
         console.log('In-target-mode: ' + inTargetMode.toString());
+        if (files.length < 1) {
+            console.log('No files found. Quiting.');
+            return;
+        }
         console.log('Files: ' + files.join(', '));
+
+        if (!inTargetMode) {
+            updateOrCreateFile(dirName, files);
+            return;
+        }
 
         editor.selection = saveSelection;
     });
