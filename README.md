@@ -3,6 +3,57 @@
 Flutter Update Exports is a VSCode extension that simplifies keeping
 export statements up-to-date.
 
+## Motivation
+
+In Flutter development, it is a common practice to develop a library
+or collection of `*.dart` files in a subdirectory and then export
+them all in a single `.dart` file with the same name as the subdir.
+
+For example, this is a common layout:
+
+```
+api/*.dart
+blocs/*.dart
+collections/*.dart
+models/*.dart
+services/*.dart
+widgets/*.dart
+api.dart
+blocs.dart
+collections.dart
+models.dart
+services.dart
+widgets.dart
+```
+
+It is also common to see this same hierarchy, but separated by a
+`src` directory in between:
+
+```
+src/api/*.dart
+src/blocs/*.dart
+src/collections/*.dart
+src/models/*.dart
+src/services/*.dart
+src/widgets/*.dart
+api.dart
+blocs.dart
+collections.dart
+models.dart
+services.dart
+widgets.dart
+```
+
+These top-level `.dart` files simply contain exports of all the subdir
+files to make it much easier to import a single file and get all the
+contents of the subdirectories.
+
+But keeping these top-level files in sync while "in the zone" like in
+the middle of a large refactor is a pain and a major distraction.
+
+The motivation for this VSCode extension is to make it easy to quickly
+update these export files to reduce the pain and distraction.
+
 ## Features
 
 Flutter Update Exports has two modes depending on which `*.dart` file
@@ -45,11 +96,22 @@ mode." In this mode, a new file in the parent directory will be edited
 or created with `.dart` added as a suffix to the current directory base
 name.
 
-For example, if "Flutter Update Exports is invoked on a file called
-`api/api_client.dart` (and no directory `api/api_client` exists), then
-the extension will attempt to edit or create the file `api.dart` in
+As a special case, if the name of the parent directory itself is within
+a `src/` directory, the new file will be created one directory higher,
+in the same directory as the `src` dir.
+
+For example, if "Flutter Update Exports" is invoked on a file called
+`lib/api/api_client.dart` (and no directory `lib/api/api_client` exists),
+then the extension will attempt to edit or create the file `api.dart` in
 the parent directory and will remove all `export` lines and replace
-them with a new `export` line for every `api/*.dart` file found.
+them with a new `export` line for every `lib/api/*.dart` file found.
+
+For the special case example, if "Flutter Update Exports" is invoked on
+a file called `lib/src/api/api_client.dart` (and no directory
+`lib/src/api/api_client` exists), then the extension will attempt to edit
+or create the file `api.dart` in `lib/src` and will remove all `export`
+lines and replace them with a new `export` line for every
+`lib/src/api/*.dart` file found.
 
 ## Reporting Problems
 
