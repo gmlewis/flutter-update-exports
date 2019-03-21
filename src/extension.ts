@@ -66,6 +66,11 @@ const updateOrCreateFile = (dirName: string, files: Array<string>) => {
         console.log('exports.primaryDir=' + exports.primaryDir);
     } catch (Exception) {
         console.log('Unable to find file: ' + fileName + '; creating it...');
+        let rootName: string = path.basename(dirName);
+        let lines = new Array<string>();
+        files.forEach((name) => lines.push("export '" + path.join(rootName, name) + "';"));
+        lines.sort();
+        console.log('exports: ' + lines.join('\n'));
     }
 };
 
