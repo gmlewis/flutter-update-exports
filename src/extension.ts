@@ -57,10 +57,29 @@ class Exports {
         }
     }
 
-    replaceWith(files: Array<string>) {
-
+    async replaceWith(files: Array<string>) {
+        let lines = exportLines(this.primaryDir, files);
+        let replacement = lines.join('\n') + '\n';
+        let exs = this.exportDirs.get(this.primaryDir) || [];
+        for (let i = exs.length - 1; i >= 0; i--) {
+            let ex = exs[i];
+            const startPos = this.editor.document.positionAt(ex.exportOffset);
+            const endIndex = ex.exportOffset + ex.exportLine.length + 1;
+            const endPos = this.editor.document.positionAt(endIndex);
+            this.editor.selection = new vscode.Selection(startPos, endPos);
+            await this.editor.edit((editBuilder: vscode.TextEditorEdit) => {
+                editBuilder.replace(this.editor.selection, (i === 0) ? replacement : '');
+            });
+        }
     }
 }
+
+const exportLines = (rootName: string, files: Array<string>) => {
+    let lines = new Array<string>();
+    files.forEach((name) => lines.push("export '" + path.join(rootName, name) + "';"));
+    lines.sort();
+    return lines;
+};
 
 const updateOrCreateFile = (dirName: string, files: Array<string>) => {
     console.log('Found ' + files.length.toString() + ' .dart files in dir: ' + dirName);
@@ -85,11 +104,9 @@ const updateOrCreateFile = (dirName: string, files: Array<string>) => {
     } catch (ex) {
         console.log('Exception: ' + ex.toString());
         console.log('Unable to find file: ' + fileName + '; creating it...');
-        let lines = new Array<string>();
-        files.forEach((name) => lines.push("export '" + path.join(rootName, name) + "';"));
-        lines.sort();
+        let lines = exportLines(rootName, files);
         console.log('Writing file: ' + fileName);
-        fs.writeFileSync(fileName, lines.join('\n'));
+        fs.writeFileSync(fileName, lines.join('\n') + '\n');
     }
 };
 
