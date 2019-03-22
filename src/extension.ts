@@ -57,10 +57,24 @@ class Exports {
         }
     }
 
-    async replaceWith(files: Array<string>) {
-        let lines = exportLines(this.primaryDir, files);
+    async replaceWith(primaryDir: string, files: Array<string>) {
+        let lines = exportLines(primaryDir, files);
         let replacement = lines.join('\n') + '\n';
-        let exs = this.exportDirs.get(this.primaryDir) || [];
+        let exs = this.exportDirs.get(primaryDir) || [];
+
+        if (exs.length < 1) {  // Append exports to end of file.
+            const buf = this.editor.document.getText();
+            const startPos = this.editor.document.positionAt(buf.length);
+            this.editor.selection = new vscode.Selection(startPos, startPos);
+            if (buf.length > 0 && !buf.endsWith('\n')) {
+                replacement = '\n' + replacement;
+            }
+            await this.editor.edit((editBuilder: vscode.TextEditorEdit) => {
+                editBuilder.replace(this.editor.selection, replacement);
+            });
+            return;
+        }
+
         for (let i = exs.length - 1; i >= 0; i--) {
             let ex = exs[i];
             const startPos = this.editor.document.positionAt(ex.exportOffset);
@@ -99,7 +113,7 @@ const updateOrCreateFile = (dirName: string, files: Array<string>) => {
                 return;
             }
             let exports = new Exports(editor, buf);
-            exports.replaceWith(files);
+            exports.replaceWith(exports.primaryDir, files);
         });
     } catch (ex) {
         console.log('Exception: ' + ex.toString());
@@ -109,6 +123,36 @@ const updateOrCreateFile = (dirName: string, files: Array<string>) => {
         fs.writeFileSync(fileName, lines.join('\n') + '\n');
     }
 };
+
+class TargetInfo {
+    primaryDir: string;
+    inTargetMode: boolean;
+    fileNames: Array<string>;
+
+    constructor(dirName: string, primaryDir: string) {
+        this.primaryDir = primaryDir;
+        this.inTargetMode = true;
+        this.fileNames = [];
+
+        try {
+            let subdirName = path.join(dirName, primaryDir);
+            console.log('Looking for directory: ' + subdirName);
+            this.fileNames = fs.readdirSync(subdirName);
+        } catch (ex) {
+            try {
+                let subdirName = path.join(dirName, 'src', primaryDir);
+                console.log('Looking for directory: ' + subdirName);
+                this.fileNames = fs.readdirSync(subdirName);
+                this.primaryDir = path.join('src', primaryDir);
+            } catch (ex) {
+                this.inTargetMode = false;
+                this.fileNames = fs.readdirSync(dirName);
+            }
+        }
+        // Filter out any non-.dart files.
+        this.fileNames = this.fileNames.filter((name) => name.endsWith('.dart'));
+    }
+}
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Congratulations, "Flutter Update Exports" is now active!');
@@ -135,27 +179,19 @@ export function activate(context: vscode.ExtensionContext) {
             primaryDir = rootName;
         }
 
-        let inTargetMode: boolean = true;
-        let files: string[] = [];
-        try {
-            let subdirName = path.join(dirName, primaryDir);
-            files = fs.readdirSync(subdirName);
-        } catch (Exception) {
-            inTargetMode = false;
-            files = fs.readdirSync(dirName);
-        }
-        console.log('In-target-mode: ' + inTargetMode.toString());
-        if (files.length < 1) {
-            console.log('No files found. Quiting.');
+        let targetInfo = new TargetInfo(dirName, primaryDir);
+        console.log('In-target-mode: ' + targetInfo.inTargetMode.toString());
+        if (targetInfo.fileNames.length < 1) {
+            console.log('No files found in child directory. Quiting.');
             return;
         }
-        console.log('Files: ' + files.join(', '));
+        // console.log('Files: ' + files.join(', '));
 
-        if (!inTargetMode) {
-            updateOrCreateFile(dirName, files);
+        if (!targetInfo.inTargetMode) {
+            updateOrCreateFile(dirName, targetInfo.fileNames);
             return;
         }
-        exports.replaceWith(files);
+        exports.replaceWith(targetInfo.primaryDir, targetInfo.fileNames);
 
         editor.selection = saveSelection;
     });
