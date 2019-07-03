@@ -1,8 +1,9 @@
 {
     "name": "flutter-update-exports",
+    "license": "SEE LICENSE IN LICENSE",
     "displayName": "flutter-update-exports",
     "description": "Flutter Update Exports simplifies keeping export statements up-to-date.",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "publisher": "gmlewis-vscode",
     "repository": "https://github.com/gmlewis/flutter-update-exports",
     "engines": {

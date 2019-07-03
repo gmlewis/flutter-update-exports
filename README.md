@@ -135,6 +135,10 @@ incorporate the fix into the plugin.
 
 ## Release Notes
 
+### 0.0.2
+
+- Incorporate vulnerability fix #1.
+
 ### 0.0.1
 
 - Initial release, "Flutter Update Exports" is the provided command.
