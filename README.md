@@ -1,3 +1,9 @@
+# UNPUBLISHED AND ARCHIVED VSCODE EXTENSION
+
+Note that on 2021-04-30, I decided to unpublish this extension and archive
+the source repo.
+I don't think it was very useful or very well planned out.
+
 # flutter-update-exports README
 
 Flutter Update Exports is a VSCode extension that simplifies keeping
